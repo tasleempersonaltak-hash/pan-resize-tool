@@ -451,7 +451,7 @@ async function resizeSignature(){
 
     try{
 
-        const img = await loadImage(file);
+        const img = signatureCropper ? signatureCropper.getCroppedCanvas({width:400,height:200}) : await loadImage(file);
 
         /*
           Landscape signature canvas.

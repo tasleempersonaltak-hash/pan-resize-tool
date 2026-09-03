@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>PAN Resize Tool</title>
-
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
 <style>
 *{
     box-sizing:border-box;
@@ -116,6 +116,7 @@ footer{
     font-size:13px;
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 </head>
 
 <body>
@@ -140,8 +141,11 @@ footer{
             type="file"
             id="photoFile"
             accept="image/jpeg,image/jpg,image/png,image/webp"
+        onchange="startPhotoCrop(event)"
         >
-
+<div id="photoCropArea" style="display:none;">
+    <img id="photoCropImage" style="max-width:100%;">
+</div>
         <button onclick="resizePhoto()">
             Resize Photo
         </button>
@@ -256,6 +260,33 @@ function canvasToJpeg(canvas, quality){
         );
 
     });
+}let photoCropper = null;
+
+function startPhotoCrop(event){
+
+    const file = event.target.files[0];
+
+    if(!file){
+        return;
+    }
+
+    const image = document.getElementById("photoCropImage");
+    const cropArea = document.getElementById("photoCropArea");
+
+    image.src = URL.createObjectURL(file);
+
+    cropArea.style.display = "block";
+
+    if(photoCropper){
+        photoCropper.destroy();
+    }
+
+    photoCropper = new Cropper(image, {
+        aspectRatio: 276 / 354,
+        viewMode: 1,
+        autoCropArea: 1,
+        responsive: true
+    });
 }
 
 
@@ -284,7 +315,7 @@ async function resizePhoto(){
 
     try{
 
-        const img = await loadImage(file);
+        const img = photoCropper ? photoCropper.getCroppedCanvas({width:276,height:354}) : await loadImage(file);
 
         /*
           Portrait PAN-style photo canvas.

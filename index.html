@@ -167,7 +167,7 @@ footer{
             type="file"
             id="signatureFile"
             accept="image/jpeg,image/jpg,image/png,image/webp"
-        ><div id="signatureCropArea" style="display:none;">
+        onchange="startSignatureCrop(event)"><div id="signatureCropArea" style="display:none;">
     <img id="signatureCropImage" style="max-width:100%;">
         </div>
 
@@ -397,7 +397,34 @@ async function resizePhoto(){
             "<p>Sorry, photo processing failed.</p>";
     }
 }
+let signatureCropper = null;
 
+function startSignatureCrop(event){
+
+ const file = event.target.files[0];
+
+ if(!file){
+ return;
+ }
+
+ const image = document.getElementById("signatureCropImage");
+ const cropArea = document.getElementById("signatureCropArea");
+
+ image.src = URL.createObjectURL(file);
+
+ cropArea.style.display = "block";
+
+ if(signatureCropper){
+ signatureCropper.destroy();
+ }
+
+ signatureCropper = new Cropper(image, {
+ aspectRatio: 2 / 1,
+ viewMode: 1,
+ autoCropArea: 1,
+ responsive: true
+ });
+}
 
 /* =========================
    SIGNATURE RESIZE

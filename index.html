@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>PAN Resize Tool</title>
+
+<style>
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:#f4f7fb;
+    color:#222;
+}
+
+header{
+    background:#0b57d0;
+    color:white;
+    text-align:center;
+    padding:28px 15px;
+}
+
+header h1{
+    margin:0;
+    font-size:30px;
+}
+
+header p{
+    margin:8px 0 0;
+    font-size:15px;
+}
+
+.container{
+    max-width:650px;
+    margin:25px auto;
+    padding:0 15px;
+}
+
+.tool{
+    background:white;
+    border-radius:14px;
+    padding:20px;
+    margin-bottom:18px;
+    box-shadow:0 3px 12px rgba(0,0,0,.08);
+}
+
+.tool h2{
+    margin-top:0;
+    font-size:21px;
+}
+
+.info{
+    background:#eef4ff;
+    padding:12px;
+    border-radius:8px;
+    font-size:14px;
+    margin-bottom:15px;
+    line-height:1.5;
+}
+
+input[type="file"]{
+    width:100%;
+    padding:12px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    margin-bottom:12px;
+}
+
+button{
+    width:100%;
+    padding:13px;
+    border:0;
+    border-radius:8px;
+    background:#0b57d0;
+    color:white;
+    font-size:16px;
+    cursor:pointer;
+}
+
+button:hover{
+    opacity:.9;
+}
+
+.result{
+    margin-top:15px;
+    text-align:center;
+}
+
+.preview{
+    max-width:100%;
+    max-height:300px;
+    margin:10px auto;
+    display:block;
+    border-radius:8px;
+}
+
+.download{
+    display:inline-block;
+    background:#188038;
+    color:white;
+    text-decoration:none;
+    padding:11px 18px;
+    border-radius:8px;
+    margin-top:10px;
+}
+
+footer{
+    text-align:center;
+    padding:25px 15px;
+    color:#666;
+    font-size:13px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>PAN Resize Tool</h1>
+    <p>Simple Photo, Signature & PDF Tools</p>
+</header>
+
+<div class="container">
+
+    <!-- PHOTO -->
+    <div class="tool">
+        <h2>📷 PAN Photo Resize</h2>
+
+        <div class="info">
+            Upload your passport-size photo. The tool will convert it to JPG
+            and resize it to the selected PAN photo format.
+        </div>
+
+        <input
+            type="file"
+            id="photoFile"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+        >
+
+        <button onclick="resizePhoto()">
+            Resize Photo
+        </button>
+
+        <div class="result" id="photoResult"></div>
+    </div>
+
+
+    <!-- SIGNATURE -->
+    <div class="tool">
+        <h2>✍️ PAN Signature Resize</h2>
+
+        <div class="info">
+            Upload a clear signature image. The tool will convert it to JPG
+            and prepare a landscape signature image.
+        </div>
+
+        <input
+            type="file"
+            id="signatureFile"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+        >
+
+        <button onclick="resizeSignature()">
+            Resize Signature
+        </button>
+
+        <div class="result" id="signatureResult"></div>
+    </div>
+
+
+    <!-- PDF -->
+    <div class="tool">
+        <h2>📄 PDF Under 300 KB</h2>
+
+        <div class="info">
+            Upload a PDF and try to reduce its size below 300 KB.
+            Processing happens in your browser.
+        </div>
+
+        <input
+            type="file"
+            id="pdfFile"
+            accept="application/pdf"
+        >
+
+        <button onclick="compressPDF()">
+            Compress PDF
+        </button>
+
+        <div class="result" id="pdfResult"></div>
+    </div>
+
+</div>
+
+
+<footer>
+    PAN Resize Tool © 2026
+</footer>
+
+
+<script>
+
+/* =========================
+   IMAGE HELPER
+========================= */
+
+function loadImage(file){
+
+    return new Promise(function(resolve,reject){
+
+        const reader = new FileReader();
+
+        reader.onload = function(){
+
+            const img = new Image();
+
+            img.onload = function(){
+                resolve(img);
+            };
+
+            img.onerror = function(){
+                reject(new Error("Image could not be loaded."));
+            };
+
+            img.src = reader.result;
+        };
+
+        reader.onerror = function(){
+            reject(new Error("File could not be read."));
+        };
+
+        reader.readAsDataURL(file);
+    });
+}
+
+
+/* =========================
+   JPG CREATOR
+========================= */
+
+function canvasToJpeg(canvas, quality){
+
+    return new Promise(function(resolve){
+
+        canvas.toBlob(
+            function(blob){
+                resolve(blob);
+            },
+            "image/jpeg",
+            quality
+        );
+
+    });
+}
+
+
+/* =========================
+   PHOTO RESIZE
+========================= */
+
+async function resizePhoto(){
+
+    const file =
+        document.getElementById("photoFile").files[0];
+
+    const result =
+        document.getElementById("photoResult");
+
+    if(!file){
+
+        result.innerHTML =
+            "<p>Please select a photo first.</p>";
+
+        return;
+    }
+
+    result.innerHTML =
+        "<p>Processing photo...</p>";
+
+    try{
+
+        const img = await loadImage(file);
+
+        /*
+          Portrait PAN-style photo canvas.
+          This is intentionally kept simple.
+        */
+
+        const width = 276;
+        const height = 354;
+
+        const canvas =
+            document.createElement("canvas");
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+
+        /*
+          White background
+        */
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0,0,width,height);
+
+        /*
+          Cover image while keeping aspect ratio
+        */
+
+        const scale =
+            Math.max(
+                width / img.width,
+                height / img.height
+            );
+
+        const newWidth =
+            img.width * scale;
+
+        const newHeight =
+            img.height * scale;
+
+        const x =
+            (width - newWidth) / 2;
+
+        const y =
+            (height - newHeight) / 2;
+
+        ctx.drawImage(
+            img,
+            x,
+            y,
+            newWidth,
+            newHeight
+        );
+
+        const blob =
+            await canvasToJpeg(canvas,0.85);
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const kb =
+            (blob.size / 1024).toFixed(1);
+
+        result.innerHTML =
+            "<p>Photo ready.</p>" +
+            "<p>Size: " + kb + " KB</p>" +
+            '<img class="preview" src="' + url + '">' +
+            '<a class="download" download="pan-photo.jpg" href="' +
+            url +
+            '">Download Photo</a>';
+
+    }catch(error){
+
+        console.error(error);
+
+        result.innerHTML =
+            "<p>Sorry, photo processing failed.</p>";
+    }
+}
+
+
+/* =========================
+   SIGNATURE RESIZE
+========================= */
+
+async function resizeSignature(){
+
+    const file =
+        document.getElementById("signatureFile").files[0];
+
+    const result =
+        document.getElementById("signatureResult");
+
+    if(!file){
+
+        result.innerHTML =
+            "<p>Please select a signature first.</p>";
+
+        return;
+    }
+
+    result.innerHTML =
+        "<p>Processing signature...</p>";
+
+    try{
+
+        const img = await loadImage(file);
+
+        /*
+          Landscape signature canvas.
+        */
+
+        const width = 400;
+        const height = 200;
+
+        const canvas =
+            document.createElement("canvas");
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx =
+            canvas.getContext("2d");
+
+        /*
+          White background
+        */
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0,0,width,height);
+
+        /*
+          Fit signature inside canvas
+        */
+
+        const scale =
+            Math.min(
+                width / img.width,
+                height / img.height
+            );
+
+        const newWidth =
+            img.width * scale;
+
+        const newHeight =
+            img.height * scale;
+
+        const x =
+            (width - newWidth) / 2;
+
+        const y =
+            (height - newHeight) / 2;
+
+        ctx.drawImage(
+            img,
+            x,
+            y,
+            newWidth,
+            newHeight
+        );
+
+        const blob =
+            await canvasToJpeg(canvas,0.85);
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const kb =
+            (blob.size / 1024).toFixed(1);
+
+        result.innerHTML =
+            "<p>Signature ready.</p>" +
+            "<p>Size: " + kb + " KB</p>" +
+            '<img class="preview" src="' + url + '">' +
+            '<a class="download" download="pan-signature.jpg" href="' +
+            url +
+            '">Download Signature</a>';
+
+    }catch(error){
+
+        console.error(error);
+
+        result.innerHTML =
+            "<p>Sorry, signature processing failed.</p>";
+    }
+}
+
+
+/* =========================
+   PDF COMPRESSOR
+========================= */
+
+async function compressPDF(){
+
+    const file =
+        document.getElementById("pdfFile").files[0];
+
+    const result =
+        document.getElementById("pdfResult");
+
+    if(!file){
+
+        result.innerHTML =
+            "<p>Please select a PDF first.</p>";
+
+        return;
+    }
+
+    result.innerHTML =
+        "<p>PDF compression is being prepared...</p>";
+
+    /*
+      PDF compression will be added after
+      the basic website is tested.
+    */
+
+    setTimeout(function(){
+
+        result.innerHTML =
+            "<p>PDF tool is ready for the next step.</p>" +
+            "<p>We will add the 300 KB compression engine after testing the photo and signature tools.</p>";
+
+    },500);
+}
+
+</script>
+
+</body>
+</html>
